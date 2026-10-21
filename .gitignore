@@ -47,3 +47,11 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Python bot project
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/

@@ -1,0 +1,91 @@
+"""A beginner-friendly starting point for a Telegram bot."""
+
+import logging
+import os
+
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
+
+# Read settings from a local .env file during development.
+# On hosted systems, environment variables can be set directly instead.
+load_dotenv()
+
+# Keep the real bot token outside the source code.
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+
+async def start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Reply when someone sends the /start command."""
+    if update.effective_message is not None:
+        await update.effective_message.reply_text(
+            "Hello! Your Telegram bot is running. Send /help to see what it can do."
+        )
+
+
+async def help_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Explain the starter bot's available commands."""
+    if update.effective_message is not None:
+        await update.effective_message.reply_text(
+            "Available commands:\n"
+            "/start — check that the bot is running\n"
+            "/help — show this message\n\n"
+            "You can also send a text message. This starter will notice it "
+            "without saving or printing its contents."
+        )
+
+
+async def receive_text(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Notice a text message without recording the message itself."""
+    if update.effective_message is None:
+        return
+
+    # Log only that a message arrived. Avoid logging private message contents.
+    logging.info("Received a text message.")
+
+
+def main() -> None:
+    """Check settings, create the bot, and begin listening for Telegram updates."""
+    if not BOT_TOKEN or BOT_TOKEN == "replace_this_with_your_bot_token":
+        raise SystemExit(
+            "Missing Telegram bot token. Copy .env.example to .env and "
+            "add your token to TELEGRAM_BOT_TOKEN."
+        )
+
+    # Show simple status messages in the terminal while the bot is running.
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=logging.INFO,
+    )
+
+    # Application manages the connection to Telegram and delivers new updates
+    # (such as messages and channel posts) to the handlers below.
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    # Commands begin with a slash. The text handler skips commands so they
+    # are handled only by their matching CommandHandler.
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, receive_text)
+    )
+
+    logging.info("Bot is running. Press Ctrl+C to stop it.")
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+if __name__ == "__main__":
+    main()
