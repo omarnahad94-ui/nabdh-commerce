@@ -25,12 +25,21 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+OWNER_ID = 1021054486
+
+def is_owner(update: Update) -> bool:
+    user = update.effective_user
+    return user is not None and user.id == OWNER_ID
+
+
 
 async def start(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Reply when someone sends the /start command."""
     if update.effective_message is not None:
+        if update.effective_chat is not None and update.effective_chat.type == "private" and not is_owner(update):
+            return
         await update.effective_message.reply_text(
             "Hello! Your Telegram bot is running. Send /help to see what it can do."
         )
@@ -41,6 +50,8 @@ async def help_command(
 ) -> None:
     """Explain the starter bot's available commands."""
     if update.effective_message is not None:
+        if update.effective_chat is not None and update.effective_chat.type == "private" and not is_owner(update):
+            return
         await update.effective_message.reply_text(
             "Available commands:\n"
             "/start — check that the bot is running\n"
@@ -57,7 +68,11 @@ async def receive_text(
     if update.effective_message is None:
         return
 
-    # Log only that a message arrived. Avoid logging private message contents.
+    chat = update.effective_chat
+    if chat is not None and chat.type == "private" and not is_owner(update):
+        return
+
+    # Do not answer ordinary group messages; group AI replies are not enabled.
     logging.info("Received a text message.")
 
 
@@ -68,6 +83,9 @@ async def post_command(
     """Generate a marketing draft with Gemini without publishing it."""
     message = update.effective_message
     if message is None:
+        return
+
+    if not is_owner(update):
         return
 
     if not GEMINI_API_KEY:
