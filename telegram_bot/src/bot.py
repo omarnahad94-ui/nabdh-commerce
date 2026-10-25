@@ -7,6 +7,7 @@ import os
 
 from dotenv import load_dotenv
 from telegram import Update
+from telegram.ext import ApplicationHandlerStop
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -26,6 +27,89 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 OWNER_ID = 1021054486
+
+
+import hashlib
+import json
+import time
+import difflib
+import re
+
+SPAM_HISTORY_FILE = "spam_history.json"
+
+def normalize_spam_text(text):
+    import unicodedata
+    text = unicodedata.normalize("NFKC", text or "").lower()
+    text = re.sub(r"[أإآٱ]", "ا", text)
+    text = re.sub(r"ى", "ي", text)
+    text = re.sub(r"https?://\\S+|www\\.\\S+", " ", text)
+    text = re.sub(r"[^\\w\\s]", " ", text)
+    return " ".join(text.split())
+
+def load_spam_history():
+    try:
+        with open(SPAM_HISTORY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+def save_spam_history(history):
+    temp = SPAM_HISTORY_FILE + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
+        json.dump(history[-500:], f, ensure_ascii=False)
+    os.replace(temp, SPAM_HISTORY_FILE)
+
+def classify_spam_text(text):
+    normalized = normalize_spam_text(text)
+
+    clear_patterns = [
+        r"(ارباح مضمونه|ربح مضمون|مكسب مضمون).{0,100}(تحويل|ايداع|ارسل|اشحن|دفع)",
+        r"(تحويل|ايداع|ارسل|اشحن|دفع).{0,100}(ارباح مضمونه|ربح مضمون|مكسب مضمون)",
+        r"(كلمه المرور|رمز التحقق|رمز otp).{0,100}(ارسل|شارك|اعطني|زودني)",
+    ]
+    if any(re.search(pattern, normalized) for pattern in clear_patterns):
+        return "clear"
+
+    review_terms = [
+        "ارباح مضمونه",
+        "ربح مضمون",
+        "ضاعف اموالك",
+        "استثمار مضمون",
+        "اربح يوميا",
+        "رمز التحقق",
+        "حسابك سيتم اغلاقه",
+        "جائزه مجانيه",
+        "حول الان",
+        "فرصه لا تعوض",
+    ]
+    if any(term in normalized for term in review_terms):
+        return "review"
+
+    return "normal"
+
+def is_previously_flagged(text, history):
+    normalized = normalize_spam_text(text)
+    if len(normalized) < 12:
+        return False
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    now = time.time()
+    recent = [
+        item for item in history
+        if isinstance(item, dict)
+        and item.get("level") == "clear"
+        and isinstance(item.get("text"), str)
+        and isinstance(item.get("time"), (int, float))
+        and now - item["time"] < 30 * 24 * 60 * 60
+    ]
+    for item in recent:
+        if item.get("hash") == digest:
+            return True
+        old_text = item["text"]
+        if len(normalized) >= 25 and len(old_text) >= 25:
+            if difflib.SequenceMatcher(None, normalized, old_text).ratio() >= 0.90:
+                return True
+    return False
 
 def is_owner(update: Update) -> bool:
     user = update.effective_user
@@ -64,17 +148,104 @@ async def help_command(
 async def receive_text(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Notice a text message without recording the message itself."""
-    if update.effective_message is None:
-        return
-
+    """Moderate group links and suspicious repeated messages."""
+    message = update.effective_message
     chat = update.effective_chat
-    if chat is not None and chat.type == "private" and not is_owner(update):
+    if message is None or chat is None:
         return
 
-    # Do not answer ordinary group messages; group AI replies are not enabled.
-    logging.info("Received a text message.")
+    if chat.type == "private" and not is_owner(update):
+        return
+    if chat.type not in ("group", "supergroup"):
+        return
 
+    # Skip anonymous-admin and channel-sent messages.
+    if message.sender_chat is not None:
+        return
+
+    user = update.effective_user
+    if user is None or user.is_bot:
+        return
+
+    try:
+        member = await context.bot.get_chat_member(chat.id, user.id)
+        if member.status in ("administrator", "creator"):
+            return
+    except Exception:
+        logging.exception("Could not verify member status; keeping message.")
+        return
+
+    text_content = message.text or message.caption or ""
+    entities = list(message.entities or []) + list(message.caption_entities or [])
+    has_link = any(
+        entity.type in ("url", "text_link")
+        for entity in entities
+    ) or bool(re.search(
+        r"(https?://|www\.|\b[a-zA-Z0-9-]+\.(?:com|net|org|io|co|me|info|biz|shop|store|ir|iq)\b)",
+        text_content, re.IGNORECASE
+    ))
+
+    if has_link:
+        try:
+            await message.delete()
+            logging.info("Deleted a group message containing a link.")
+        except Exception:
+            logging.exception("Could not delete a link message.")
+        return
+
+    history = load_spam_history()
+    now = time.time()
+    history = [
+        item for item in history
+        if isinstance(item, dict)
+        and isinstance(item.get("text"), str)
+        and isinstance(item.get("time"), (int, float))
+        and now - item["time"] < 30 * 24 * 60 * 60
+    ]
+
+    level = classify_spam_text(text_content)
+    repeated = is_previously_flagged(text_content, history)
+    normalized = normalize_spam_text(text_content)
+
+    if level == "clear" or repeated:
+        try:
+            await message.delete()
+            logging.info("Deleted a clear or previously flagged suspicious message.")
+        except Exception:
+            logging.exception("Could not delete suspicious message.")
+        if len(normalized) >= 12:
+            import hashlib
+            history.append({
+                "hash": hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
+                "text": normalized,
+                "time": now,
+                "level": "clear",
+            })
+            save_spam_history(history)
+        return
+
+    if level == "review":
+        if len(normalized) >= 12:
+            import hashlib
+            history.append({
+                "hash": hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
+                "text": normalized,
+                "time": now,
+            })
+            save_spam_history(history)
+        try:
+            await context.bot.send_message(
+                chat_id=OWNER_ID,
+                text=(
+                    "تنبيه: توجد رسالة مشبوهة تحتاج إلى مراجعتك.\\n"
+                    f"المجموعة: {chat.title or chat.id}\\n"
+                    f"المرسل: {user.full_name} (ID: {user.id})\\n"
+                    f"النص: {text_content[:2000]}\\n"
+                    "لم تُحذف الرسالة تلقائيًا."
+                ),
+            )
+        except Exception:
+            logging.exception("Could not send private moderation alert.")
 
 
 async def post_command(
@@ -147,12 +318,22 @@ def main() -> None:
 
     # Commands begin with a slash. The text handler skips commands so they
     # are handled only by their matching CommandHandler.
+    async def private_command_guard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat = update.effective_chat
+        if chat is not None and chat.type == "private" and not is_owner(update):
+            raise ApplicationHandlerStop()
+
+    application.add_handler(
+        MessageHandler(filters.ChatType.PRIVATE & filters.COMMAND, private_command_guard),
+        group=-1,
+    )
+
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
 
     application.add_handler(CommandHandler("post", post_command))
     application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, receive_text)
+        MessageHandler((filters.TEXT | filters.CAPTION) & ~filters.COMMAND, receive_text)
     )
 
     logging.info("Bot is running. Press Ctrl+C to stop it.")
