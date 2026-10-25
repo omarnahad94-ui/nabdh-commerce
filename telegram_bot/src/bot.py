@@ -37,52 +37,43 @@ import re
 
 SPAM_HISTORY_FILE = "spam_history.json"
 
+
 def normalize_spam_text(text):
     import unicodedata
+
     text = unicodedata.normalize("NFKC", text or "").lower()
     text = re.sub(r"[أإآٱ]", "ا", text)
     text = re.sub(r"ى", "ي", text)
-    text = re.sub(r"https?://\\S+|www\\.\\S+", " ", text)
-    text = re.sub(r"[^\\w\\s]", " ", text)
+    text = re.sub(r"ة", "ه", text)
+    text = re.sub(r"[ًٌٍَُِّْـ]", "", text)
+    text = re.sub(r"https?://\S+|www\.\S+", " ", text)
+    text = re.sub(r"[^\w\s]", " ", text)
     return " ".join(text.split())
 
-def load_spam_history():
-    try:
-        with open(SPAM_HISTORY_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except (OSError, ValueError):
-        return []
-
-def save_spam_history(history):
-    temp = SPAM_HISTORY_FILE + ".tmp"
-    with open(temp, "w", encoding="utf-8") as f:
-        json.dump(history[-500:], f, ensure_ascii=False)
-    os.replace(temp, SPAM_HISTORY_FILE)
 
 def classify_spam_text(text):
     normalized = normalize_spam_text(text)
+    compact = re.sub(r"\s+", "", normalized)
 
-    clear_patterns = [
-        r"(ارباح مضمونه|ربح مضمون|مكسب مضمون).{0,100}(تحويل|ايداع|ارسل|اشحن|دفع)",
-        r"(تحويل|ايداع|ارسل|اشحن|دفع).{0,100}(ارباح مضمونه|ربح مضمون|مكسب مضمون)",
-        r"(كلمه المرور|رمز التحقق|رمز otp).{0,100}(ارسل|شارك|اعطني|زودني)",
-    ]
-    if any(re.search(pattern, normalized) for pattern in clear_patterns):
+    # Clear fraud patterns: only delete when a strong combination appears.
+    if (
+        ("ارباحمضمونه" in compact or "ربحمضمون" in compact)
+        and any(word in compact for word in ("تحويل", "ايداع", "ارسل", "اشحن", "دفع"))
+    ):
         return "clear"
 
-    review_terms = [
-        "ارباح مضمونه",
-        "ربح مضمون",
-        "ضاعف اموالك",
-        "استثمار مضمون",
-        "اربح يوميا",
-        "رمز التحقق",
-        "حسابك سيتم اغلاقه",
-        "جائزه مجانيه",
-        "حول الان",
-        "فرصه لا تعوض",
-    ]
+    if (
+        ("رمز التحقق" in normalized or "كلمة المرور" in normalized or "رمز otp" in normalized)
+        and any(word in normalized for word in ("ارسل", "شارك", "اعطني", "زودني"))
+    ):
+        return "clear"
+
+    review_terms = (
+        "ارباح مضمونه", "ربح مضمون", "ضاعف اموالك",
+        "استثمار مضمون", "اربح يوميا", "رمز التحقق",
+        "حسابك سيتم اغلاقه", "جائزه مجانيه",
+        "حول الان", "فرصه لا تعوض",
+    )
     if any(term in normalized for term in review_terms):
         return "review"
 
