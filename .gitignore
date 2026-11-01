@@ -55,3 +55,10 @@ __pycache__/
 venv/
 .env
 .pytest_cache/
+
+# Local backups and temporary files
+**/*.backup*
+**/*backup*
+telegram_bot/spam_history.json
+telegram_bot/code_to_send.txt
+telegram_bot/review_bundle.txt
