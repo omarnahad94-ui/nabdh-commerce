@@ -183,3 +183,54 @@
     pointer-events: none;
   }
 }
+
+/* Animated neon border for focused product fields */
+@keyframes neon-border-spin {
+  to { transform: rotate(360deg); }
+}
+
+.neon-field {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  padding: 1px;
+  background: rgba(255,255,255,0.09);
+}
+
+.neon-field::before {
+  content: "";
+  position: absolute;
+  inset: -150%;
+  z-index: 0;
+  background: conic-gradient(from 0deg, transparent 0 72%, #2dd4bf 82%, #a5f3fc 88%, transparent 96%);
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.neon-field:focus-within::before {
+  opacity: 1;
+  animation: neon-border-spin 2.4s linear infinite;
+}
+
+.neon-field:focus-within {
+  box-shadow: 0 0 14px rgba(45,212,191,0.12);
+}
+
+.neon-field input,
+.neon-field textarea {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: calc(0.75rem - 1px);
+  background: #080d17;
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-field:focus-within::before {
+    animation: none;
+  }
+}

@@ -242,8 +242,8 @@ function Dashboard() {
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/[0.08] px-3 py-1.5 text-[11px] text-teal-200"><Sparkles size={13} /> مساحة عملك الذكية</div>
                 <h1 className="text-2xl font-bold leading-relaxed sm:text-3xl">أهلاً بك في لوحة التحكم</h1>
                 <p className="mt-2 max-w-xl text-sm leading-7 text-slate-400">نظّم منتجاتك، جهّز منشوراتك، وتابع أعمال قناتك من مكان واحد.</p>
-                <button onClick={() => { setShowProductForm(v => !v); setFormError(""); }} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-teal-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-teal-200">
-                  <Plus size={17} /> {showProductForm ? "إغلاق النموذج" : "إضافة منتج"}
+                <button onClick={() => { setShowProductForm(v => !v); setFormError(""); }} className="group relative mt-5 inline-flex items-center gap-2 overflow-hidden rounded-xl border border-teal-200/30 bg-gradient-to-l from-teal-200 to-teal-400 px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_5px_22px_rgba(45,212,191,0.16)] transition-all duration-300 hover:-translate-y-1 hover:border-teal-100 hover:shadow-[0_10px_30px_rgba(45,212,191,0.30)] active:translate-y-0 active:scale-95">
+                  <Plus size={18} className="transition-transform duration-500 group-hover:rotate-90 group-active:rotate-180" /> {showProductForm ? "إغلاق النموذج" : "إضافة منتج"}
                 </button>
               </div>
               <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-white/[0.08] bg-black/20 p-4">
@@ -273,13 +273,13 @@ function Dashboard() {
               </div>
               <form onSubmit={saveProduct} className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm text-slate-300">اسم المنتج *
-                  <input required maxLength={200} value={formName} onChange={e => setFormName(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.09] bg-[#080d17] px-3 py-3 text-sm outline-none focus:border-teal-400/50" placeholder="اسم المنتج" />
+                  <div className="neon-field mt-2"><input required maxLength={200} value={formName} onChange={e => setFormName(e.target.value)} className="px-3 py-3 text-sm" placeholder="اسم المنتج" /></div>
                 </label>
                 <label className="text-sm text-slate-300">السعر بالدينار العراقي
-                  <input type="number" min="0" step="0.01" value={formPrice} onChange={e => setFormPrice(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.09] bg-[#080d17] px-3 py-3 text-sm outline-none focus:border-teal-400/50" placeholder="مثال: 25000" />
+                  <div className="neon-field mt-2"><input type="number" min="0" step="0.01" value={formPrice} onChange={e => setFormPrice(e.target.value)} className="px-3 py-3 text-sm" placeholder="مثال: 25000" /></div>
                 </label>
                 <label className="text-sm text-slate-300 sm:col-span-2">الوصف
-                  <textarea rows={3} maxLength={5000} value={formDescription} onChange={e => setFormDescription(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.09] bg-[#080d17] px-3 py-3 text-sm outline-none focus:border-teal-400/50" placeholder="تفاصيل المنتج ومميزاته" />
+                  <div className="neon-field mt-2"><textarea rows={3} maxLength={5000} value={formDescription} onChange={e => setFormDescription(e.target.value)} className="px-3 py-3 text-sm" placeholder="تفاصيل المنتج ومميزاته" /></div>
                 </label>
                 <label className="text-sm text-slate-300 sm:col-span-2">اختيار صورة من الجهاز (اختياري)
                   <input
@@ -331,7 +331,7 @@ function Dashboard() {
 
                 </label>
                 <label className="text-sm text-slate-300 sm:col-span-2">أو رابط صورة المنتج (اختياري)
-                  <input type="url" value={formImageUrl} onChange={e => setFormImageUrl(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.09] bg-[#080d17] px-3 py-3 text-sm outline-none focus:border-teal-400/50" placeholder="https://..." />
+                  <div className="neon-field mt-2"><input type="url" value={formImageUrl} onChange={e => setFormImageUrl(e.target.value)} className="px-3 py-3 text-sm" placeholder="https://..." /></div>
                 </label>
                 {formError && <p role="alert" className="text-sm text-rose-300 sm:col-span-2">{formError}</p>}
                 <div className="flex flex-wrap gap-3 sm:col-span-2">
@@ -351,19 +351,19 @@ function Dashboard() {
               { label: "المنتجات المنشورة", value: String(products.filter(p => p.status === "published").length), icon: TrendingUp, note: "بحسب الحالة المسجلة", color: "text-violet-300", bg: "bg-violet-400/10" },
               { label: "حالة الاتصال", value: loading ? "جارٍ الفحص" : error ? "غير متصل" : "متصل", icon: Activity, note: "خادم المنتجات", color: error ? "text-rose-300" : "text-teal-300", bg: error ? "bg-rose-400/10" : "bg-teal-400/10" },
             ].map(({ label, value, icon: Icon, note, color, bg }) => (
-              <div key={label} className="rounded-2xl border border-white/[0.07] bg-[#0d1523] p-5 transition hover:border-white/[0.13]">
+              <div key={label} className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#111d2d] to-[#0b1422] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.16)] transition-all duration-300 hover:-translate-y-1 hover:border-teal-300/25 hover:shadow-[0_14px_36px_rgba(20,184,166,0.09)]">
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-slate-400">{label}</div>
                   <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg} ${color}`}><Icon size={19} /></div>
                 </div>
-                <div className={`mt-5 text-2xl font-bold ${color}`}>{value}</div>
+                <div className={`mt-5 text-3xl font-bold tracking-tight tabular-nums leading-none ${color}`}>{value}</div>
                 <div className="mt-2 text-[11px] text-slate-500">{note}</div>
               </div>
             ))}
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0d1523]">
-            <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-center sm:px-6">
+            <div className="flex flex-col justify-between gap-4 border-b border-teal-300/[0.10] bg-gradient-to-l from-[#111d2d] to-[#0d1523] p-5 sm:flex-row sm:items-center sm:px-6">
               <div>
                 <h2 className="text-base font-bold">المنتجات</h2>
                 <p className="mt-1.5 text-xs text-slate-500">المنتجات المحفوظة في قاعدة البيانات</p>
@@ -396,7 +396,7 @@ function Dashboard() {
                 <table className="w-full min-w-[650px] text-right text-sm">
                   <thead className="bg-white/[0.02] text-[11px] text-slate-500"><tr><th className="px-6 py-4 font-medium">المنتج</th><th className="px-6 py-4 font-medium">السعر</th><th className="px-6 py-4 font-medium">الحالة</th><th className="px-6 py-4 font-medium">تاريخ الإضافة</th></tr></thead>
                   <tbody className="divide-y divide-white/[0.06]">
-                    {filtered.map(p => <tr key={p.id} className="transition hover:bg-white/[0.02]">
+                    {filtered.map(p => <tr key={p.id} className="transition-colors duration-200 hover:bg-teal-300/[0.035]">
                       <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/[0.04] text-slate-500">{p.imageUrl ? <img src={p.imageUrl} alt="" className="h-full w-full object-cover" /> : <Package size={18} />}</div><div><div className="font-medium text-slate-200">{p.name}</div><div className="mt-1 max-w-xs truncate text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div></div></td>
                       <td className="px-6 py-4 text-slate-300">{formatPrice(p.price)}</td>
                       <td className="px-6 py-4"><span className={`rounded-full px-2.5 py-1 text-[11px] ${p.status === "published" ? "bg-teal-400/10 text-teal-300" : "bg-amber-400/10 text-amber-300"}`}>{p.status === "published" ? "منشور" : p.status === "draft" ? "مسودة" : p.status}</span></td>
