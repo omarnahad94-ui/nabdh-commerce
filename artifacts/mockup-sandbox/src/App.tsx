@@ -6,6 +6,7 @@ import {
   Sparkles, TrendingUp, X
 } from "lucide-react";
 import { modules as discoveredModules } from "./.generated/mockup-components";
+import { CopilotPage } from "./components/copilot/CopilotPage";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 type Product = {
@@ -234,7 +235,26 @@ function Dashboard() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-[1400px] space-y-7 p-4 sm:p-8">
+        <nav
+          aria-label="أقسام لوحة التحكم"
+          className="flex gap-2 overflow-x-auto border-b border-white/[0.07] bg-[#0b1220] px-4 py-2 lg:hidden"
+        >
+          {navItems.map(({ label, icon: Icon }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setSection(label)}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs transition ${section === label ? "bg-teal-400/10 font-semibold text-teal-300 ring-1 ring-teal-400/15" : "text-slate-400 hover:bg-white/[0.04] hover:text-white"}`}
+            >
+              <Icon size={15} /> <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {section === "مساعد المبيعات" ? (
+          <CopilotPage />
+        ) : (
+          <div className="mx-auto max-w-[1400px] space-y-7 p-4 sm:p-8">
           <section className="relative overflow-hidden rounded-3xl border border-teal-400/15 bg-gradient-to-l from-[#102d35] via-[#101d2b] to-[#111827] p-6 sm:p-8">
             <div className="absolute -left-12 -top-20 h-64 w-64 rounded-full bg-teal-400/[0.07] blur-3xl" />
             <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center">
@@ -414,7 +434,8 @@ function Dashboard() {
           <footer className="flex flex-col justify-between gap-2 pb-4 text-[11px] text-slate-600 sm:flex-row">
             <span>نبض التجارة · لوحة إدارة المنتجات</span><span>نسخة أولية قيد التطوير</span>
           </footer>
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
